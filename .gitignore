@@ -1,0 +1,11 @@
+!.gitkeep
+.DS_Store
+
+# VSCode IDE files
+.vscode
+
+
+node_modules
+node_modules_bak
+build
+
