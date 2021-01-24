@@ -10,7 +10,7 @@ function toStreamArr(streamObj) {
       return { key, val: streamObj[key] };
     })
     .forEach(function (x) {
-      if (isObservable(x.val.isObservable)) {
+      if (isObservable(x.val)) {
         streamProps.push(
           x.val.pipe(
             map(function (y) {
