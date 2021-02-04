@@ -38,67 +38,59 @@ function isShallowEqual(v, o) {
 }
 
 function mergeObjTo(ob1, ob2) {
-  var keys = Object.keys(ob2);
-  for (var i = 0; i < keys.length; i++) {
-    ob1[keys[i]] = ob2[keys[i]];
+  var result = {};
+  var keys1 = Object.keys(ob1);
+  var keys2 = Object.keys(ob2);
+  for (var i = 0; i < keys1.length; i++) {
+    result[keys1[i]] = ob1[keys1[i]];
   }
-}
-
-function init(component, controller) {
-  var onDestroyCallback;
-  var intercept;
-
-  function updateData(obj) {
-    mergeObjTo(component.resolved, obj);
+  for (var i = 0; i < keys2.length; i++) {
+    result[keys2[i]] = ob2[keys2[i]];
   }
-
-  function rerender() {
-    component.force$.next();
-  }
-
-  function onError(e) {
-    console.error(e);
-  }
-
-  function finalize() {
-    if (onDestroyCallback) {
-      onDestroyCallback();
-    }
-  }
-
-  controller({
-    props$: component.props$,
-    onDestroy: function (fn) {
-      component.onDestroyCallback = fn;
-    },
-    resolve: function (strObj) {
-      parseInput(strObj || {}, component.streams, component.resolved);
-    },
-    setIntercept: function (i) {
-      intercept = i;
-    },
-  });
-
-  var pipes = component.intercept
-    ? pipe(mergeAll(), takeUntil(component.destroyed$), map(updateData), intercept)
-    : pipe(mergeAll(), takeUntil(component.destroyed$), map(updateData));
-
-  of.apply(null, [component.props$].concat(component.streams))
-    .pipe(pipes)
-    .subscribe(rerender, onError, finalize);
+  return result;
 }
 
 function xstream(controller, Wrapped) {
   function StreamC() {
-    this.props$ = new BehaviorSubject(arguments[0]);
+    var self = this;
+    this.props$ = new BehaviorSubject(mergeObjTo({}, arguments[0]));
     this.force$ = new Subject();
     this.destroyed$ = new Subject();
     this.streams = [];
     this.resolved = {};
 
-    init(this, controller);
+    var intercept = pipe();
 
-    React.Component.apply(this, arguments);
+    controller({
+      props$: self.props$,
+      destroyed$: self.destroyed$,
+      resolve: function (strObj) {
+        parseInput(strObj || {}, self.streams, self.resolved);
+      },
+      setIntercept: function (i) {
+        intercept = i;
+      },
+    });
+
+    var resolvedStreams = of(self.streams).pipe(
+      mergeAll(),
+      map(function (obj) {
+        self.resolved = mergeObjTo(self.resolved, obj);
+      })
+    );
+
+    of(self.props$, resolvedStreams)
+      .pipe(mergeAll(), takeUntil(self.destroyed$), intercept)
+      .subscribe(
+        function () {
+          self.force$.next();
+        },
+        function (e) {
+          console.error(e);
+        }
+      );
+
+    React.Component.apply(self, arguments);
   }
 
   StreamC.prototype = Object.create(React.Component.prototype);
@@ -120,13 +112,14 @@ function xstream(controller, Wrapped) {
 
   sProto.shouldComponentUpdate = function (nextProps) {
     if (!isShallowEqual(this.props, nextProps)) {
-      this.props$.next(nextProps);
+      this.props$.next(mergeObjTo(nextProps, {}));
     }
     return false;
   };
 
   sProto.render = function () {
-    return React.createElement(Wrapped, this.resolved);
+    var props = mergeObjTo(this.props$.value, this.resolved);
+    return React.createElement(Wrapped, props);
   };
 
   return StreamC;
