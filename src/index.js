@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React from "react";
 import { BehaviorSubject, pipe, Subject, isObservable, of } from "rxjs";
 import { map, takeUntil, mergeAll } from "rxjs/operators";
@@ -9,18 +8,23 @@ function internalizeKey(key) {
   };
 }
 
-function parseInput(obj, streams, props) {
+function forEachKey(obj, callback) {
   var keys = Object.keys(obj);
   for (var i = 0; i < keys.length; i++) {
-    var key = keys[i];
-    var val = obj[key];
-    if (isObservable(val)) {
-      var newObs = val.pipe(map(internalizeKey(key)));
-      streams.push(newObs);
-    } else {
-      props[key] = val;
-    }
+    callback(obj[keys[i]], keys[i]);
   }
+}
+
+function getStreams(obj) {
+  const streams = [];
+
+  forEachKey(obj, function (val, key) {
+    if (isObservable(val)) {
+      streams.push(val.pipe(map(internalizeKey(key))));
+    }
+  });
+
+  return streams;
 }
 
 function isShallowEqual(v, o) {
@@ -39,14 +43,12 @@ function isShallowEqual(v, o) {
 
 function mergeObjTo(ob1, ob2) {
   var result = {};
-  var keys1 = Object.keys(ob1);
-  var keys2 = Object.keys(ob2);
-  for (var i = 0; i < keys1.length; i++) {
-    result[keys1[i]] = ob1[keys1[i]];
-  }
-  for (var i = 0; i < keys2.length; i++) {
-    result[keys2[i]] = ob2[keys2[i]];
-  }
+  forEachKey(ob1, function (val, key) {
+    result[key] = val;
+  });
+  forEachKey(ob2, function (val, key) {
+    result[key] = val;
+  });
   return result;
 }
 
@@ -65,14 +67,15 @@ function xstream(controller, Wrapped) {
       props$: self.props$,
       destroyed$: self.destroyed$,
       resolve: function (strObj) {
-        parseInput(strObj || {}, self.streams, self.resolved);
+        self.resolved = mergeObjTo({}, strObj);
+        self.streams = getStreams(strObj || {});
       },
       setIntercept: function (i) {
         intercept = i;
       },
     });
 
-    var resolvedStreams = of(self.streams).pipe(
+    var resolvedStreams = of.apply(null, self.streams).pipe(
       mergeAll(),
       map(function (obj) {
         self.resolved = mergeObjTo(self.resolved, obj);
@@ -118,7 +121,6 @@ function xstream(controller, Wrapped) {
   };
 
   sProto.render = function () {
-    console.log("test");
     var props = mergeObjTo(this.props$.value, this.resolved);
     return React.createElement(Wrapped, props);
   };
