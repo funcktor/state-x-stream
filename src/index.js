@@ -118,6 +118,7 @@ function xstream(controller, Wrapped) {
   };
 
   sProto.render = function () {
+    console.log("test");
     var props = mergeObjTo(this.props$.value, this.resolved);
     return React.createElement(Wrapped, props);
   };
