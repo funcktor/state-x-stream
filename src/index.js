@@ -15,16 +15,17 @@ function forEachKey(obj, callback) {
   }
 }
 
-function getStreams(obj) {
-  const streams = [];
-
-  forEachKey(obj, function (val, key) {
+function partitionProps(params) {
+  var streams = [];
+  var nonStreams = {};
+  forEachKey(params, function (val, key) {
     if (isObservable(val)) {
       streams.push(val.pipe(map(internalizeKey(key))));
+    } else {
+      nonStreams[key] = val;
     }
   });
-
-  return streams;
+  return { streams: streams, nonStreams: nonStreams };
 }
 
 function isShallowEqual(v, o) {
@@ -67,8 +68,9 @@ function xstream(controller, Wrapped) {
       props$: self.props$,
       destroyed$: self.destroyed$,
       resolve: function (strObj) {
-        self.resolved = mergeObjTo({}, strObj);
-        self.streams = getStreams(strObj || {});
+        const result = partitionProps(strObj || {});
+        self.resolved = result.nonStreams;
+        self.streams = result.streams;
       },
       setIntercept: function (i) {
         intercept = i;
