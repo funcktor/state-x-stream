@@ -1,31 +1,20 @@
-import React from "react";
-import { BehaviorSubject, pipe, Subject, isObservable, of } from "rxjs";
-import { map, takeUntil, mergeAll } from "rxjs/operators";
+import React, { useEffect, useState } from "react";
+import { BehaviorSubject, Subject, isObservable, merge, pipe } from "rxjs";
+import { map, takeUntil, distinctUntilChanged, scan } from "rxjs/operators";
 
-function internalizeKey(key) {
-  return function (val) {
-    return { [key]: val };
-  };
-}
+console.log(React);
 
-function forEachKey(obj, callback) {
-  var keys = Object.keys(obj);
-  for (var i = 0; i < keys.length; i++) {
-    callback(obj[keys[i]], keys[i]);
-  }
-}
+function mapStreamsToState(params) {
+  const streams = Object.keys(params)
+    .map((key) => ({ key, obs$: params[key] }))
+    .filter(({ obs$ }) => isObservable(obs$));
 
-function partitionProps(params) {
-  var streams = [];
-  var nonStreams = {};
-  forEachKey(params, function (val, key) {
-    if (isObservable(val)) {
-      streams.push(val.pipe(map(internalizeKey(key))));
-    } else {
-      nonStreams[key] = val;
-    }
-  });
-  return { streams: streams, nonStreams: nonStreams };
+  const init = streams.reduce((a, { key, obs$ }) => {
+    return { ...a, [key]: obs$.value };
+  }, params);
+
+  const fixed = streams.map(({ key, obs$ }) => obs$.pipe(map((x) => ({ [key]: x }))));
+  return merge(...fixed).pipe(scan((acc, curr) => ({ ...acc, ...curr }), init));
 }
 
 function isShallowEqual(v, o) {
@@ -42,92 +31,52 @@ function isShallowEqual(v, o) {
   return true;
 }
 
-function mergeObjTo(ob1, ob2) {
-  var result = {};
-  forEachKey(ob1, function (val, key) {
-    result[key] = val;
-  });
-  forEachKey(ob2, function (val, key) {
-    result[key] = val;
-  });
-  return result;
-}
-
 function xstream(controller, Wrapped) {
-  function StreamC() {
-    var self = this;
-    this.props$ = new BehaviorSubject(mergeObjTo({}, arguments[0]));
-    this.force$ = new Subject();
-    this.destroyed$ = new Subject();
-    this.streams = [];
-    this.resolved = {};
+  console.log("------------> > > >");
+  const props$ = new BehaviorSubject({});
+  const destroyed$ = new Subject();
+  const updated$ = new BehaviorSubject({});
+  let interceptor = pipe();
 
-    var intercept = pipe();
+  controller({
+    props$: props$.pipe(takeUntil(destroyed$)),
+    getProps: () => props$.value,
+    destroyed$,
+    resolve: function (params) {
+      mapStreamsToState(params)
+        .pipe(takeUntil(destroyed$))
+        .subscribe((x) => updated$.next(x));
+    },
 
-    controller({
-      props$: self.props$,
-      destroyed$: self.destroyed$,
-      resolve: function (strObj) {
-        const result = partitionProps(strObj || {});
-        self.resolved = result.nonStreams;
-        self.streams = result.streams;
-      },
-      setIntercept: function (i) {
-        intercept = i;
-      },
-    });
+    setIntercept: function (i) {
+      interceptor = i;
+    },
+  });
 
-    var resolvedStreams = of.apply(null, self.streams).pipe(
-      mergeAll(),
-      map(function (obj) {
-        self.resolved = mergeObjTo(self.resolved, obj);
-      })
-    );
+  function StreamedComponent(props) {
+    const [streamVals, setStreamVals] = useState(updated$.value);
 
-    of(self.props$, resolvedStreams)
-      .pipe(mergeAll(), takeUntil(self.destroyed$), intercept)
-      .subscribe(
-        function () {
-          self.force$.next();
-        },
-        function (e) {
-          console.error(e);
-        }
-      );
+    useEffect(() => {
+      updated$
+        .pipe(
+          takeUntil(destroyed$),
+          distinctUntilChanged((a, b) => isShallowEqual(a, b)),
+          interceptor,
+          takeUntil(destroyed$)
+        )
+        .subscribe((x) => setStreamVals(x));
 
-    React.Component.apply(self, arguments);
+      return () => destroyed$.next();
+    }, []);
+
+    // useEffect(() => {
+    //   props$.next(props);
+    // }, [props]);
+
+    return Wrapped({ ...props, ...streamVals });
   }
 
-  StreamC.prototype = Object.create(React.Component.prototype);
-
-  var sProto = StreamC.prototype;
-
-  sProto.constructor = StreamC;
-
-  sProto.componentDidMount = function () {
-    var self = this;
-    self.force$.pipe(takeUntil(self.destroyed$)).subscribe(function () {
-      self.forceUpdate();
-    });
-  };
-
-  sProto.componentWillUnmount = function () {
-    this.destroyed$.next();
-  };
-
-  sProto.shouldComponentUpdate = function (nextProps) {
-    if (!isShallowEqual(this.props, nextProps)) {
-      this.props$.next(mergeObjTo(nextProps, {}));
-    }
-    return false;
-  };
-
-  sProto.render = function () {
-    var props = mergeObjTo(this.props$.value, this.resolved);
-    return React.createElement(Wrapped, props);
-  };
-
-  return StreamC;
+  return React.memo(StreamedComponent);
 }
 
 export default xstream;
