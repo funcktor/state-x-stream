@@ -1,45 +1,36 @@
 import React, { useEffect, useState } from "react";
 import { BehaviorSubject, Subject, pipe } from "rxjs";
-import { takeUntil, distinctUntilChanged, tap } from "rxjs/operators";
+import { takeUntil, distinctUntilChanged, tap, debounceTime } from "rxjs/operators";
 import mapStreamsToStateObj from "./mapStreamsToStateObj";
 import isShallowEqual from "./isShallowEqual";
 
-function xstream(controller, Wrapped) {
+function xstream(controller, Wrapped, debug) {
   const props$ = new BehaviorSubject({});
   const destroyed$ = new Subject();
-  const updated$ = new BehaviorSubject({});
-  let interceptor = pipe();
-
-  controller({
-    props$,
-    destroyed$,
-    getProps: () => props$.value,
-    setIntercept: (i) => (interceptor = i),
-    resolve: (params) => {
-      mapStreamsToStateObj(params)
-        .pipe(takeUntil(destroyed$))
-        .subscribe((x) => updated$.next(x));
-    },
-  });
 
   return function StreamedComp(props) {
     props$.next(props);
-    const [streamVals, setStreamVals] = useState(updated$.value);
+    const [streamVals, setStreamVals] = useState(null);
 
     useEffect(() => {
-      updated$
-        .pipe(
-          takeUntil(destroyed$),
-          distinctUntilChanged((a, b) => isShallowEqual(a, b)),
-          interceptor,
-          takeUntil(destroyed$)
-        )
-        .subscribe((x) => setStreamVals(x));
-
+      controller({
+        props$,
+        destroyed$,
+        getProps: () => props$.value,
+        resolve: (params) => {
+          mapStreamsToStateObj(params)
+            .pipe(
+              takeUntil(destroyed$),
+              distinctUntilChanged((a, b) => isShallowEqual(a, b)),
+              tap((x) => setStreamVals(x))
+            )
+            .subscribe(() => {});
+        },
+      });
       return () => destroyed$.next();
     }, []);
 
-    return <Wrapped {...props} {...streamVals} />;
+    return streamVals ? <Wrapped {...props} {...streamVals} /> : null;
   };
 }
 
