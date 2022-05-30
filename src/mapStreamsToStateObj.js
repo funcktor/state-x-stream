@@ -1,4 +1,4 @@
-import { isObservable, merge } from "rxjs";
+import { isObservable, merge, of } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
 function mapStreamsToStateObj(params) {
@@ -10,10 +10,8 @@ function mapStreamsToStateObj(params) {
     return { ...a, [key]: obs$.value };
   }, params);
 
-  const fixed = streams.map(({ key, obs$ }) =>
-    obs$.pipe(map((x) => ({ [key]: x })))
-  );
-  return merge(...fixed).pipe(scan((acc, curr) => ({ ...acc, ...curr }), init));
+  const fixed = streams.map(({ key, obs$ }) => obs$.pipe(map((x) => ({ [key]: x }))));
+  return merge(of({}), ...fixed).pipe(scan((acc, curr) => ({ ...acc, ...curr }), init));
 }
 
 export default mapStreamsToStateObj;
