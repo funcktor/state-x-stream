@@ -4,13 +4,14 @@ import { takeUntil, distinctUntilChanged, tap, debounceTime } from "rxjs/operato
 import mapStreamsToStateObj from "./mapStreamsToStateObj";
 import isShallowEqual from "./isShallowEqual";
 
-function xstream(controller, Wrapped, debug) {
+function xstream(controller, Wrapped) {
   const props$ = new BehaviorSubject({});
   const destroyed$ = new Subject();
 
   return function StreamedComp(props) {
-    props$.next(props);
     const [streamVals, setStreamVals] = useState(null);
+
+    props$.next(props);
 
     useEffect(() => {
       controller({
@@ -21,13 +22,15 @@ function xstream(controller, Wrapped, debug) {
           mapStreamsToStateObj(params)
             .pipe(
               takeUntil(destroyed$),
-              distinctUntilChanged((a, b) => isShallowEqual(a, b)),
-              tap((x) => setStreamVals(x))
+              distinctUntilChanged((a, b) => isShallowEqual(a, b))
             )
-            .subscribe(() => {});
+            .subscribe(setStreamVals);
         },
       });
-      return () => destroyed$.next();
+      return () => {
+        destroyed$.next();
+        props$.complete();
+      };
     }, []);
 
     return streamVals ? <Wrapped {...props} {...streamVals} /> : null;
