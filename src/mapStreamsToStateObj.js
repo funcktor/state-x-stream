@@ -1,9 +1,7 @@
-import { combineLatest, isObservable, merge, BehaviorSubject } from "rxjs";
-import { map, filter, scan, distinctUntilChanged } from "rxjs/operators";
-import isShallowEqual from "./isShallowEqual";
-import convertToBSSubject from "./convertToBSubject";
+import { combineLatest, isObservable, BehaviorSubject } from "rxjs";
+import { map, filter, distinctUntilChanged } from "rxjs/operators";
 
-function mapStreamsToStateObj(params, log) {
+function mapStreamsToStateObj(params) {
   const state$ = new BehaviorSubject(null);
   const streams = Object.keys(params)
     .map((key) => ({ key, val: params[key] }))
@@ -23,11 +21,7 @@ function mapStreamsToStateObj(params, log) {
   );
 
   combineLatest(fixed)
-    .pipe(
-      map((x) => {
-        return x.reduce((a, i) => ({ ...a, ...{ [i[0]]: i[1] } }), {});
-      })
-    )
+    .pipe(map((x) => x.reduce((a, i) => ({ ...a, ...{ [i[0]]: i[1] } }), {})))
     .subscribe((x) => {
       state$.next({ ...init, ...x });
     });
