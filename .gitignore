@@ -5,7 +5,9 @@
 .vscode
 
 
-node_modules
-node_modules_bak
+node_modules/
+node_modules_bak/
 build
 
+dist/
+dist
