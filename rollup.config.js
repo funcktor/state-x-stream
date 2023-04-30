@@ -1,23 +1,26 @@
-import { nodeResolve } from "@rollup/plugin-node-resolve";
-import babel from "@rollup/plugin-babel";
-import externals from "rollup-plugin-node-externals";
-import del from "rollup-plugin-delete";
-import pkg from "./package.json";
+import commonjs from "@rollup/plugin-commonjs";
+import resolve from "@rollup/plugin-node-resolve";
+import typescript from "@rollup/plugin-typescript";
+import peerDepsExternal from "rollup-plugin-peer-deps-external";
+import terser from "@rollup/plugin-terser";
+import packageJson from "./package.json" assert { type: "json" };
+
+const plugins = [peerDepsExternal(), resolve(), commonjs(), terser()];
+const exclude = ["node_modules", "dist", "src/tests", "src/stories"];
+const tsConfig = { declaration: true, declarationDir: "./dist", rootDir: "src/", exclude };
 
 export default [
+  // CommonJS
   {
-    input: "./src/index.js",
-    plugins: [
-      del({ targets: "dist/*" }),
-      externals({ deps: true }),
-      nodeResolve({ extensions: [".js"] }),
-      babel({
-        babelHelpers: "runtime",
-        exclude: "**/node_modules/**",
-        extensions: [".js"],
-      }),
-    ],
-    output: [{ file: pkg.module, format: "esm", sourcemap: true, strict: true }],
-    external: ["react", "rxjs", "rxjs/operators"],
+    input: "src/index.ts",
+    output: { dir: "./", exports: "default", entryFileNames: packageJson.main, format: "cjs" },
+    plugins: [...plugins, typescript(tsConfig)],
+  },
+
+  // ES
+  {
+    input: "src/index.ts",
+    output: { file: packageJson.module, format: "esm" },
+    plugins: [...plugins, typescript({ exclude })],
   },
 ];

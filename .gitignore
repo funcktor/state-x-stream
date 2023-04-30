@@ -3,11 +3,10 @@
 
 # VSCode IDE files
 .vscode
-
-
 node_modules/
 node_modules_bak/
 build
 
+
 dist/
-dist
+
