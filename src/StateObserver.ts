@@ -51,9 +51,6 @@ export default class StateObserver {
   }
 
   destroy() {
-    this.destroyed$.next(true);
-    this.props$.complete();
-    this.destroyed$.complete();
     this.state$.complete();
   }
 }

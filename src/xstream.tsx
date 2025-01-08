@@ -2,11 +2,42 @@ import React, { ComponentType, PropsWithRef } from "react";
 import StateObserver from "./StateObserver";
 import shallowEqual from "./shallowEqual";
 
-export function xstream(injector: any) {
+// import React from "react";
+
+// type Fn<TArg, TResult> = (arg: TArg) => TResult;
+
+// const withMouseClicks =
+//   <TArg, TResult>(fn: Fn<TArg, TResult>) =>
+//   <P extends object>(Wrapped: React.ComponentType<P & TResult>) => {
+//     return class WithMouseClicks extends React.Component<P, TResult> {
+//       state: TResult = {} as TResult;
+
+//       handleClick = () => {
+//         this.setState(fn(this.state));
+//       };
+
+//       render() {
+//         return (
+//           <div onClick={this.handleClick}>
+//             <Wrapped
+//               {...(this.props as P & TResult)}
+//               {...(this.state as TResult)}
+//             />
+//           </div>
+//         );
+//       }
+//     };
+//   };
+
+// export default withMouseClicks;
+
+type Fn<TArg, TResult> = (arg: TArg) => TResult;
+
+export function xstream<TArg, TResult>(injector: Fn<TArg, TResult>) {
   const createObserved = <P extends object>(
     Wrapped: ComponentType<PropsWithRef<any>>
-  ): ComponentType<P> => {
-    return class Component extends React.Component<P> {
+  ): ComponentType<P & TResult> => {
+    return class Component extends React.Component<P, TResult> {
       observer: any;
 
       constructor(props: any) {
