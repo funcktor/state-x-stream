@@ -2,12 +2,10 @@ import React, { ComponentType } from "react";
 import StateObserver from "./StateObserver";
 import shallowEqual from "./shallowEqual";
 
-// Define the type for the injector function
 type InjectorFunction = (injProps: any) => any;
 
-// Define the xstream function
 export function xstream<P extends object>(injector: InjectorFunction) {
-  const createObserved = (Wrapped: React.Component<P>) => {
+  const createObserved = (Wrapped: any) => {
     return class ObservedComponent extends React.Component {
       private observer: StateObserver | null;
 
@@ -43,6 +41,7 @@ export function xstream<P extends object>(injector: InjectorFunction) {
       }
 
       render() {
+        console.log("rendere");
         // Pass only props to the wrapped component
         return <Wrapped {...this.props} {...(this.state as P)} />;
       }
