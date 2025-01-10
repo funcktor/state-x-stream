@@ -1,18 +1,24 @@
-import React, { ComponentType } from "react";
+import { ComponentType, Component } from "react";
+import { BehaviorSubject, Subject } from "rxjs";
 import StateObserver from "./StateObserver";
 import shallowEqual from "./shallowEqual";
 
-type InjectorFunction = (injProps: any) => any;
+export type ControllerProps<T> = {
+  props$: BehaviorSubject<T>;
+  destroyed$: Subject<boolean>;
+};
 
-export function xstream<P extends object>(injector: InjectorFunction) {
-  const createObserved = (Wrapped: any) => {
-    return class ObservedComponent extends React.Component {
+type InjectorFunction = <T>(injProps: ControllerProps<T>) => any;
+
+function xstream<P extends object>(injector: InjectorFunction) {
+  const createObserved = (Wrapped: ComponentType<P>) => {
+    return class ObservedComponent extends Component {
       private observer: StateObserver | null;
 
       constructor(props: P) {
         super(props);
         this.observer = new StateObserver(injector, props);
-        this.state = this.observer.state$.value || {}; // Ensure state is initialized
+        this.state = this.observer.state$.value || {};
       }
 
       componentDidMount() {
@@ -41,12 +47,12 @@ export function xstream<P extends object>(injector: InjectorFunction) {
       }
 
       render() {
-        console.log("rendere");
-        // Pass only props to the wrapped component
-        return <Wrapped {...this.props} {...(this.state as P)} />;
+        return <Wrapped {...(this.state as P)} />;
       }
     };
   };
 
   return createObserved;
 }
+
+export default xstream;
