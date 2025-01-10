@@ -1,15 +1,21 @@
-import React, { ComponentType, PropsWithRef } from "react";
+import { ComponentType, Component } from "react";
+import { BehaviorSubject, Subject } from "rxjs";
 import StateObserver from "./StateObserver";
 import shallowEqual from "./shallowEqual";
 
-export function xstream(injector: any) {
-  const createObserved = <P extends object>(
-    Wrapped: ComponentType<PropsWithRef<any>>
-  ): ComponentType<P> => {
-    return class Component extends React.Component<P> {
-      observer: any;
+export type ControllerProps<T> = {
+  props$: BehaviorSubject<T>;
+  destroyed$: Subject<boolean>;
+};
 
-      constructor(props: any) {
+type InjectorFunction = <T>(injProps: ControllerProps<T>) => any;
+
+function xstream<P extends object>(injector: InjectorFunction) {
+  const createObserved = (Wrapped: ComponentType<P>) => {
+    return class ObservedComponent extends Component {
+      private observer: StateObserver | null;
+
+      constructor(props: P) {
         super(props);
         this.observer = new StateObserver(injector, props);
         this.state = this.observer.state$.value;
@@ -25,21 +31,27 @@ export function xstream(injector: any) {
         this.observer.state$.subscribe({ next, error });
       }
 
-      shouldComponentUpdate(nextProps: any, nextState: any) {
-        this.observer.setProps(nextProps);
-        return !shallowEqual(this.state, nextState);
+      shouldComponentUpdate(nextProps: P, nextState: Partial<P>) {
+        if (this.observer) {
+          this.observer.setProps(nextProps);
+        }
+        return !shallowEqual(this.state, nextState) || !shallowEqual(this.props, nextProps);
       }
 
       componentWillUnmount() {
-        this.observer && this.observer.destroy();
-        this.observer = null;
+        if (this.observer) {
+          this.observer.destroy();
+          this.observer = null;
+        }
       }
 
       render() {
-        return <Wrapped {...this.state} />;
+        return <Wrapped {...(this.state as P)} />;
       }
     };
   };
 
   return createObserved;
 }
+
+export default xstream;
