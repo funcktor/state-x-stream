@@ -1,4 +1,4 @@
-import { ComponentType, Component } from "react";
+import { FC, Component } from "react";
 import { BehaviorSubject, Subject } from "rxjs";
 import StateObserver from "./StateObserver";
 import shallowEqual from "./shallowEqual";
@@ -10,12 +10,12 @@ export type ControllerProps<T> = {
 
 type InjectorFunction = <T>(injProps: ControllerProps<T>) => any;
 
-export function xstream<P extends object>(injector: InjectorFunction) {
-  const createObserved = (Wrapped: ComponentType<P>) => {
+export function xstream(injector: InjectorFunction) {
+  function createObserved<P extends object>(Wrapped: FC<P>): FC<any> {
     return class ObservedComponent extends Component {
       private observer: StateObserver | null;
 
-      constructor(props: P) {
+      constructor(props) {
         super(props);
         this.observer = new StateObserver(injector, props);
         this.state = this.observer.state$.value;
@@ -31,7 +31,7 @@ export function xstream<P extends object>(injector: InjectorFunction) {
         this.observer.state$.subscribe({ next, error });
       }
 
-      shouldComponentUpdate(nextProps: P, nextState: Partial<P>) {
+      shouldComponentUpdate(nextProps, nextState) {
         if (this.observer) {
           this.observer.setProps(nextProps);
         }
@@ -46,10 +46,11 @@ export function xstream<P extends object>(injector: InjectorFunction) {
       }
 
       render() {
+        console.log("psoles");
         return <Wrapped {...(this.state as P)} />;
       }
     };
-  };
+  }
 
   return createObserved;
 }

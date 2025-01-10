@@ -1,6 +1,6 @@
 import { BehaviorSubject, Subject } from "rxjs";
 
-import { xstream } from "./xstream";
+import xstream from "./xstream";
 
 export type ControllerProps<T> = {
   props$: BehaviorSubject<T>;
