@@ -46,7 +46,6 @@ export function xstream(injector: InjectorFunction) {
       }
 
       render() {
-        console.log("psoles");
         return <Wrapped {...(this.state as P)} />;
       }
     };
