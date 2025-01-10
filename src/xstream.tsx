@@ -10,7 +10,7 @@ export type ControllerProps<T> = {
 
 type InjectorFunction = <T>(injProps: ControllerProps<T>) => any;
 
-function xstream<P extends object>(injector: InjectorFunction) {
+export function xstream<P extends object>(injector: InjectorFunction) {
   const createObserved = (Wrapped: ComponentType<P>) => {
     return class ObservedComponent extends Component {
       private observer: StateObserver | null;

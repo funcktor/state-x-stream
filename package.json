@@ -1,6 +1,6 @@
 {
   "name": "state-x-stream",
-  "version": "6.0.4",
+  "version": "6.0.5",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "files": [
@@ -16,9 +16,7 @@
     "coverage": "yarn test --coverage",
     "prebuild": "yarn clean",
     "build": "rollup -c",
-    "start": "rollup -c -w",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "start": "rollup -c -w"
   },
   "peerDependencies": {
     "react": "^16.14.0 || ^17.0.0 || ^18.2.0",
@@ -37,13 +35,6 @@
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-terser": "^0.4.1",
     "@rollup/plugin-typescript": "^11.1.0",
-    "@storybook/addon-essentials": "^7.0.7",
-    "@storybook/addon-interactions": "^7.0.7",
-    "@storybook/addon-links": "^7.0.7",
-    "@storybook/blocks": "^7.0.7",
-    "@storybook/react": "^7.0.7",
-    "@storybook/react-webpack5": "^7.0.7",
-    "@storybook/testing-library": "^0.0.14-next.2",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@types/jest": "^29.5.1",
