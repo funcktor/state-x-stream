@@ -1,4 +1,4 @@
-import { FC, Component } from "react";
+import { FC, Component, ComponentType } from "react";
 import { BehaviorSubject, Subject } from "rxjs";
 import StateObserver from "./StateObserver";
 import shallowEqual from "./shallowEqual";
@@ -8,14 +8,14 @@ export type ControllerProps<T> = {
   destroyed$: Subject<boolean>;
 };
 
-type InjectorFunction = <T>(injProps: ControllerProps<T>) => any;
+export type InjectorFunction<T, K> = (injProps: ControllerProps<T>) => K;
 
-export function xstream(injector: InjectorFunction) {
-  function createObserved<P extends object>(Wrapped: FC<P>): FC<any> {
-    return class ObservedComponent extends Component {
+export function xstream<L extends object, M extends object>(injector: InjectorFunction<L, M>) {
+  function createObserved<P extends object>(Wrapped: ComponentType<P>): ComponentType<L> {
+    return class ObservedComponent extends Component<L, M> {
       private observer: StateObserver | null;
 
-      constructor(props) {
+      constructor(props: L) {
         super(props);
         this.observer = new StateObserver(injector, props);
         this.state = this.observer.state$.value;
@@ -31,7 +31,7 @@ export function xstream(injector: InjectorFunction) {
         this.observer.state$.subscribe({ next, error });
       }
 
-      shouldComponentUpdate(nextProps, nextState) {
+      shouldComponentUpdate(nextProps: any, nextState: any) {
         if (this.observer) {
           this.observer.setProps(nextProps);
         }

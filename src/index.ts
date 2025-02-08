@@ -1,10 +1,5 @@
-import { BehaviorSubject, Subject } from "rxjs";
+import xstream, { InjectorFunction, ControllerProps } from "./xstream";
 
-import xstream from "./xstream";
-
-export type ControllerProps<T> = {
-  props$: BehaviorSubject<T>;
-  destroyed$: Subject<boolean>;
-};
-
+export type { ControllerProps };
+export type { InjectorFunction };
 export default xstream;
